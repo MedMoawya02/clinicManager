@@ -22,7 +22,7 @@ services:
     networks:
       - clinicmanager-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U clinicuser -d clinicmanager"]
+      test: ["CMD-SHELL", "pg_isready -U clinicuser -d dbClinic"]
       interval: 10s
       timeout: 5s
       retries: 5

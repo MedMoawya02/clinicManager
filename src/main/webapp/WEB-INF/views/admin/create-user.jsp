@@ -1,6 +1,4 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ page import="java.util.List" %>
-<%@ page import="java.util.Arrays" %>
 <%@ page import="com.clinicmanager.dto.UserDTO" %>
 <%@ page import="com.clinicmanager.model.Role" %>
 <%!
@@ -27,6 +25,11 @@
         if (role == null || role.isEmpty()) return "-";
         String r = role.replace('_', ' ').toLowerCase();
         return Character.toUpperCase(r.charAt(0)) + r.substring(1);
+    }
+
+    private static String attr(HttpServletRequest request, String name) {
+        Object v = request.getAttribute(name);
+        return v == null ? "" : v.toString();
     }
 %>
 <!DOCTYPE html>
@@ -122,7 +125,7 @@
         /* ---------- Form card ---------- */
         .panel {
             background: #fff; border: 1px solid var(--border);
-            border-radius: 14px; max-width: 760px; overflow: hidden;
+            border-radius: 14px; max-width: 900px; overflow: hidden;
         }
         .panel-head { padding: 20px 28px; border-bottom: 1px solid var(--border); }
         .panel-head h2 { font-size: 17px; color: var(--primary-dark); }
@@ -139,6 +142,18 @@
 
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 22px; }
         .full { grid-column: 1 / -1; }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin: 12px 0 -4px;
+            grid-column: 1 / -1;
+        }
 
         .field label.lbl { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 7px; }
         .field label.lbl .req { color: var(--danger); }
@@ -249,21 +264,14 @@
 
     String ctx = request.getContextPath();
 
-    // Roles: send a "roles" attribute from your servlet (List of enum values or strings).
-    // If it is missing, the default list below is used.
-//    List<?> roles = (List<?>) request.getAttribute("roles");
-//    if (roles == null || roles.isEmpty()) {
-//        roles = Arrays.asList("ADMIN", "DOCTOR", "NURSE", "RECEPTIONIST");
-//    }
     Role[] roles = (Role[]) request.getAttribute("roles");
     if (roles == null) {
-        roles = Role.values();   // safe fallback if someone forwards without setting it
+        roles = Role.values();
     }
 
-    // Values kept after a failed submission
-    String fullName = (String) request.getAttribute("fullName");
-    String email    = (String) request.getAttribute("email");
-    String selRole  = request.getAttribute("role") != null ? String.valueOf(request.getAttribute("role")) : "";
+    String fullName = attr(request, "fullName");
+    String email    = attr(request, "email");
+    String selRole  = attr(request, "role");
     Object activeAttr = request.getAttribute("active");
     boolean active = activeAttr == null || Boolean.parseBoolean(String.valueOf(activeAttr));
 %>
@@ -283,7 +291,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
             Tableau de bord
         </a>
-        <a href="<%= ctx %>/admin/users/new" class="active">
+        <a href="<%= ctx %>/admin/create-user" class="active">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
             Créer un utilisateur
         </a>
@@ -366,14 +374,12 @@
                         <span class="icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3z"/></svg>
                         </span>
-                        <select id="role" name="role" required>
+                        <select id="role" name="role" required onchange="toggleRoleFields()">
                             <option value="" disabled <%= selRole.isEmpty() ? "selected" : "" %>>Sélectionner un rôle…</option>
                             <% for (Role r : roles) {
                                 String rv = r.name(); %>
-                            <option value="<%= esc(rv) %>"
-                                    <%= rv.equals(selRole) ? "selected" : "" %>>
-                                <%= esc(roleLabel(rv)) %>
-                            </option>                            <% } %>
+                            <option value="<%= esc(rv) %>" <%= rv.equals(selRole) ? "selected" : "" %>><%= esc(roleLabel(rv)) %></option>
+                            <% } %>
                         </select>
                         <span class="chev">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
@@ -412,6 +418,232 @@
                         </button>
                     </div>
                     <div class="match" id="matchTxt"></div>
+                </div>
+
+                <!-- ================= PATIENT FIELDS ================= -->
+                <div id="patientFields" class="full" style="display:none">
+                    <h3 class="section-title">Informations du patient</h3>
+                    <div class="grid">
+
+                        <div class="field">
+                            <label class="lbl" for="cin">CIN <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 9h3M15 13h3M5 16c1-2 3-2 4 0"/></svg>
+                                </span>
+                                <input type="text" id="cin" name="cin" maxlength="20"
+                                       placeholder="Ex. AB123456"
+                                       value="<%= esc(attr(request, "cin")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="genre">Genre <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+                                </span>
+                                <select id="genre" name="genre">
+                                    <option value="" disabled selected>Sélectionner…</option>
+                                    <option value="HOMME">Homme</option>
+                                    <option value="FEMME">Femme</option>
+                                    <option value="AUTRE">Autre</option>
+                                </select>
+                                <span class="chev">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="nom">Nom <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </span>
+                                <input type="text" id="nom" name="nom" maxlength="60"
+                                       value="<%= esc(attr(request, "nom")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="prenom">Prénom <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </span>
+                                <input type="text" id="prenom" name="prenom" maxlength="60"
+                                       value="<%= esc(attr(request, "prenom")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="dateNaissance">Date de naissance <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
+                                </span>
+                                <input type="date" id="dateNaissance" name="dateNaissance"
+                                       value="<%= esc(attr(request, "dateNaissance")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="groupeSanguin">Groupe sanguin</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 7.5 7 12a7 7 0 11-14 0c0-4.5 7-12 7-12z"/></svg>
+                                </span>
+                                <select id="groupeSanguin" name="groupeSanguin" data-optional="true">
+                                    <option value="">— Non renseigné —</option>
+                                    <option value="A_POS">A+</option>
+                                    <option value="A_NEG">A-</option>
+                                    <option value="B_POS">B+</option>
+                                    <option value="B_NEG">B-</option>
+                                    <option value="AB_POS">AB+</option>
+                                    <option value="AB_NEG">AB-</option>
+                                    <option value="O_POS">O+</option>
+                                    <option value="O_NEG">O-</option>
+                                </select>
+                                <span class="chev">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="field full">
+                            <label class="lbl" for="adresse">Adresse</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                </span>
+                                <input type="text" id="adresse" name="adresse" maxlength="255"
+                                       data-optional="true"
+                                       value="<%= esc(attr(request, "adresse")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field full">
+                            <label class="lbl" for="telephonePatient">Téléphone</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 01-2.2 2A19.8 19.8 0 012 4.2 2 2 0 014 2h3a2 2 0 012 1.7l.6 3a2 2 0 01-.5 1.7L7.5 10A16 16 0 0014 16.5l1.6-1.6a2 2 0 011.7-.5l3 .6A2 2 0 0122 16.9z"/></svg>
+                                </span>
+                                <input type="text" id="telephonePatient" name="telephone" maxlength="20"
+                                       data-optional="true"
+                                       value="<%= esc(attr(request, "telephone")) %>">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ================= DOCTOR FIELDS ================= -->
+                <div id="doctorFields" class="full" style="display:none">
+                    <h3 class="section-title">Informations du médecin</h3>
+                    <div class="grid">
+
+                        <div class="field">
+                            <label class="lbl" for="matricule">Matricule <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h10"/></svg>
+                                </span>
+                                <input type="text" id="matricule" name="matricule" maxlength="30"
+                                       placeholder="Ex. MED-001"
+                                       value="<%= esc(attr(request, "matricule")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="titre">Titre</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+                                </span>
+                                <select id="titre" name="titre" data-optional="true">
+                                    <option value="">—</option>
+                                    <option value="Dr">Dr</option>
+                                    <option value="Pr">Pr</option>
+                                </select>
+                                <span class="chev">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="nomDoc">Nom <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </span>
+                                <input type="text" id="nomDoc" name="nom" maxlength="60"
+                                       value="<%= esc(attr(request, "nom")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="prenomDoc">Prénom <span class="req">*</span></label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </span>
+                                <input type="text" id="prenomDoc" name="prenom" maxlength="60"
+                                       value="<%= esc(attr(request, "prenom")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="specialite">Spécialité</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+                                </span>
+                                <input type="text" id="specialite" name="specialite" maxlength="80"
+                                       data-optional="true"
+                                       placeholder="Ex. Cardiologie"
+                                       value="<%= esc(attr(request, "specialite")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="departement">Département</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+                                </span>
+                                <input type="text" id="departement" name="departement" maxlength="80"
+                                       data-optional="true"
+                                       value="<%= esc(attr(request, "departement")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="emailPro">Email professionnel</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+                                </span>
+                                <input type="email" id="emailPro" name="emailPro" maxlength="120"
+                                       data-optional="true"
+                                       value="<%= esc(attr(request, "emailPro")) %>">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="lbl" for="telephoneDoc">Téléphone</label>
+                            <div class="input-wrap">
+                                <span class="icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 01-2.2 2A19.8 19.8 0 012 4.2 2 2 0 014 2h3a2 2 0 012 1.7l.6 3a2 2 0 01-.5 1.7L7.5 10A16 16 0 0014 16.5l1.6-1.6a2 2 0 011.7-.5l3 .6A2 2 0 0122 16.9z"/></svg>
+                                </span>
+                                <input type="text" id="telephoneDoc" name="telephone" maxlength="20"
+                                       data-optional="true"
+                                       value="<%= esc(attr(request, "telephone")) %>">
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
                 <!-- Active -->
@@ -484,7 +716,7 @@
         }
         conf.addEventListener('input', checkMatch);
 
-        // client-side validation (the server must validate too)
+        // client-side validation
         form.addEventListener('submit', function (e) {
             if (!form.checkValidity() || !checkMatch()) {
                 e.preventDefault();
@@ -493,6 +725,37 @@
             }
         });
     })();
+
+    /* ============================================================
+       AFFICHAGE CONDITIONNEL PATIENT / DOCTOR
+       ============================================================ */
+    function toggleRoleFields() {
+        var role = document.getElementById('role').value;
+        var patientBlk = document.getElementById('patientFields');
+        var doctorBlk  = document.getElementById('doctorFields');
+
+        var isPatient = (role === 'PATIENT');
+        var isDoctor  = (role === 'DOCTOR');
+
+        patientBlk.style.display = isPatient ? 'block' : 'none';
+        doctorBlk.style.display  = isDoctor  ? 'block' : 'none';
+
+        toggleRequired(patientBlk, isPatient);
+        toggleRequired(doctorBlk,  isDoctor);
+    }
+
+    function toggleRequired(container, required) {
+        container.querySelectorAll('input, select').forEach(function (el) {
+            if (el.dataset.optional === 'true') return;
+            if (required) {
+                el.setAttribute('required', 'required');
+            } else {
+                el.removeAttribute('required');
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', toggleRoleFields);
 </script>
 </body>
 </html>

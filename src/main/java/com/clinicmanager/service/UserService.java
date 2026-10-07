@@ -1,5 +1,6 @@
 package com.clinicmanager.service;
 
+import com.clinicmanager.dto.CreateUserRequest;
 import com.clinicmanager.model.Role;
 import com.clinicmanager.model.User;
 
@@ -12,8 +13,9 @@ public interface UserService {
      * Creates a new user.
      * @throws IllegalArgumentException if email already exists or inputs are invalid
      */
-    User createUser(String fullName, String email, String plainPassword,
-                    Role role, boolean active);
+//    User createUser(String fullName, String email, String plainPassword,
+//                    Role role, boolean active);
+    User createUser(CreateUserRequest req);
 
     Optional<User> findByEmail(String email);
 
