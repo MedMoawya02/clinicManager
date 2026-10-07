@@ -25,7 +25,7 @@
             <h1>Mes rendez-vous</h1>
             <p>Consultez et gérez vos rendez-vous à venir et passés.</p>
         </div>
-        <a class="btn btn-primary" href="<%= ctx %>/patient/appointments/new">
+        <a class="btn btn-primary" href="<%= ctx %>/patient/book-appointment">
             ➕ Prendre un rendez-vous
         </a>
     </div>
