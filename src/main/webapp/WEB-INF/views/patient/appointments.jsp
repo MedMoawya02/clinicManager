@@ -71,7 +71,7 @@
                         <% if (a.getStatus() == AppointmentStatus.PLANNED
                                 || a.getStatus() == AppointmentStatus.DONE) { %>
                         <form method="post"
-                              action="<%= ctx %>/patient/appointments/cancel"
+                              action="<%= ctx %>/patient/cancel"
                               style="display:inline">
                             <input type="hidden" name="id" value="<%= a.getId() %>">
                             <button class="btn btn-ghost"

@@ -53,7 +53,15 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
     public Optional<Appointment> findById(Long id) {
         EntityManager em = em();
         try {
-            return Optional.ofNullable(em.find(Appointment.class, id));
+            List<Appointment> result = em.createQuery(
+                            "SELECT a FROM Appointment a " +
+                                    "JOIN FETCH a.doctor " +
+                                    "JOIN FETCH a.patient " +
+                                    "WHERE a.id = :id",
+                            Appointment.class)
+                    .setParameter("id", id)
+                    .getResultList();
+            return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
         } finally {
             em.close();
         }
@@ -89,6 +97,8 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
         try {
             return em.createQuery(
                             "SELECT a FROM Appointment a " +
+                                    "JOIN FETCH a.doctor " +
+                                    "JOIN FETCH a.patient " +
                                     "WHERE a.doctor.id = :did " +
                                     "ORDER BY a.date DESC, a.slot DESC",
                             Appointment.class)
