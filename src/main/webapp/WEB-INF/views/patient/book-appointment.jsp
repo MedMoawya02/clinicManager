@@ -34,7 +34,7 @@
     <% } %>
 
     <section class="panel">
-        <form method="post" action="<%= ctx %>/patient/appointments/new">
+        <form method="post" action="<%= ctx %>/patient/book-appointment">
             <div class="panel-body">
                 <div class="form-grid">
 

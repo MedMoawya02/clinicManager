@@ -68,6 +68,8 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
         try {
             return em.createQuery(
                             "SELECT a FROM Appointment a " +
+                                    "JOIN FETCH a.doctor " +
+                                    "JOIN FETCH a.patient " +
                                     "WHERE a.patient.id = :pid " +
                                     "ORDER BY a.date DESC, a.slot DESC",
                             Appointment.class)
